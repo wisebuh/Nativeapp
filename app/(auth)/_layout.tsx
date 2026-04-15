@@ -11,7 +11,8 @@ export default function AuthLayout() {
           uri: "https://img.freepik.com/free-photo/watercolor-floral-border-with-pink-purple-flowers-light-background_9975-29074.jpg?w=360"
         }}
         resizeMode="stretch"
-        style={{borderBottomRightRadius:50, borderBottomLeftRadius:50}}
+        style={{borderBottomRightRadius:50, 
+          borderBottomLeftRadius:50, width:"100%", height:"100%"}}
         />
 
         <Image source={{uri:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwVJ3yw4I9YzBB8Xv0Eo8HgdIHiFbNPRUeMcF97gZXyA&s"}}

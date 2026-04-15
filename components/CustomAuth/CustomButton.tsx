@@ -2,6 +2,8 @@ import { View, Text, TouchableOpacity, Dimensions, ActivityIndicator } from 'rea
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react'
 import useTheme from '@/hooks/useTheme';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 
 interface CustomButtonProps{
     onPress: ()=>void;

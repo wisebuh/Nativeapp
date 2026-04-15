@@ -5,13 +5,17 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Image,
+  Alert,
   Platform,
 } from "react-native";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import useTheme from "@/hooks/useTheme";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface SettingRowProps {
@@ -43,20 +47,12 @@ const SettingRow = ({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}
-      style={[
-        styles.row,
-        { borderBottomColor: colors.borders + "55" },
-      ]}
+      style={[styles.row, { borderBottomColor: colors.borders + "55" }]}
     >
-      {/* Icon bubble */}
       <View
         style={[
           styles.iconBubble,
-          {
-            backgroundColor: danger
-              ? "#ff4d4d22"
-              : colors.interface + "22",
-          },
+          { backgroundColor: danger ? "#ff4d4d22" : colors.interface + "22" },
         ]}
       >
         <Ionicons
@@ -66,7 +62,6 @@ const SettingRow = ({
         />
       </View>
 
-      {/* Labels */}
       <View style={styles.rowLabels}>
         <Text
           style={[
@@ -83,17 +78,10 @@ const SettingRow = ({
         )}
       </View>
 
-      {/* Right slot */}
       <View style={styles.rowRight}>
-        {right ?? (
-          onPress && (
-            <Ionicons
-              name="chevron-forward"
-              size={16}
-              color={colors.textMuted}
-            />
-          )
-        )}
+        {right ?? (onPress && (
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+        ))}
       </View>
     </TouchableOpacity>
   );
@@ -131,6 +119,69 @@ export default function Settings() {
   const [biometrics, setBiometrics] = useState(true);
   const [dataSync, setDataSync] = useState(true);
 
+  // ✅ Load email from storage
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem("userEmail").then((email) => {
+      if (email) setCurrentUserEmail(email);
+    });
+  }, []);
+
+  const deleteUser = useMutation(api.users.deleteUser);
+
+  // ✅ Skip query until email is ready
+  const currentUser = useQuery(
+    api.users.getUserByEmail,
+    currentUserEmail ? { email: currentUserEmail } : "skip"
+  );
+
+  const handleLogout = async () => {
+    Alert.alert("Log Out", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log Out",
+        style: "destructive",
+        onPress: async () => {
+          await AsyncStorage.removeItem("userEmail"); // ✅ clear stored email
+          router.replace("/signIn");
+        },
+      },
+    ]);
+  };
+
+  const handleDeleteAccount = async () => {
+    Alert.alert(
+      "Delete Account",
+      "Are you sure? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              if (!currentUser?._id) {
+                Alert.alert("Error", "User not found");
+                return;
+              }
+
+              await deleteUser({ id: currentUser._id });
+              await AsyncStorage.removeItem("userEmail"); // ✅ clear stored email
+
+              Alert.alert("Success", "Account deleted successfully");
+              router.replace("/signIn");
+
+            } catch (error: any) {
+              console.error("Error deleting account:", error);
+              Alert.alert("Error", error.message || "Failed to delete account");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
@@ -154,26 +205,21 @@ export default function Settings() {
           ]}
         >
           <View
-            style={[
-              styles.avatar,
-              { backgroundColor: colors.interface + "33" },
-            ]}
+            style={[styles.avatar, { backgroundColor: colors.interface + "33" }]}
           >
             <Ionicons name="person" size={32} color={colors.interface} />
           </View>
           <View style={styles.profileInfo}>
+            {/* ✅ Show real user data if available */}
             <Text style={[styles.profileName, { color: colors.text }]}>
-              John Doe
+              {currentUser?.name ?? "Loading..."}
             </Text>
             <Text style={[styles.profileEmail, { color: colors.textMuted }]}>
-              johndoe@email.com
+              {currentUser?.email ?? currentUserEmail ?? ""}
             </Text>
           </View>
           <View
-            style={[
-              styles.editBadge,
-              { backgroundColor: colors.interface + "22" },
-            ]}
+            style={[styles.editBadge, { backgroundColor: colors.interface + "22" }]}
           >
             <Ionicons name="pencil" size={14} color={colors.interface} />
           </View>
@@ -189,16 +235,12 @@ export default function Settings() {
               <Switch
                 value={isDarkMode}
                 onValueChange={toggleDarkMode}
-                trackColor={{
-                  false: colors.borders,
-                  true: colors.interface,
-                }}
+                trackColor={{ false: colors.borders, true: colors.interface }}
                 thumbColor={colors.primary}
               />
             }
           />
         </SettingSection>
-        
 
         {/* ── Notifications ── */}
         <SettingSection title="Notifications">
@@ -304,20 +346,20 @@ export default function Settings() {
           />
         </SettingSection>
 
-        {/* ── Danger Zone ── */}
+        {/* ── Account ── */}
         <SettingSection title="Account">
           <SettingRow
             icon="log-out"
             label="Log Out"
             danger
-            onPress={() => {}}
+            onPress={handleLogout} // ✅ wired up properly
           />
           <SettingRow
             icon="person-remove"
             label="Delete Account"
             sublabel="This action is irreversible"
             danger
-            onPress={() => {}}
+            onPress={handleDeleteAccount}
           />
         </SettingSection>
 
@@ -347,8 +389,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     letterSpacing: -0.5,
   },
-
-  // Profile card
   profileCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -383,8 +423,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
-  // Section
   section: {
     marginBottom: 24,
   },
@@ -400,8 +438,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: "hidden",
   },
-
-  // Row
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -435,8 +471,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
   },
-
-  // Footer
   footer: {
     alignItems: "center",
     marginTop: 8,

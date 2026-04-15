@@ -1,12 +1,14 @@
-import { View, Text, Image, TouchableOpacity, ImageBackground, Pressable, StyleSheet, useColorScheme } from 'react-native'
+import { View, Text, TouchableOpacity, ImageBackground, Pressable, StyleSheet, useColorScheme } from 'react-native'
 import Ionicons from '@expo/vector-icons/Ionicons'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import {LinearGradient} from 'expo-linear-gradient'
+import {Image} from "expo-image";
 import { Link } from 'expo-router'
 import { Dimensions } from 'react-native'
 import { useEffect, useState } from 'react';
 import useTheme  from '@/hooks/useTheme';
-
+import { useMutation,useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 function Timer() {
   const [time, setTime] = useState(new Date().getHours());
   
@@ -22,7 +24,7 @@ function Timer() {
   if (time < 12) greeting = "Good Morning";
   else if (time < 18) greeting = "Good Afternoon";
 
-  return <Text style={[styles.timeText]}>{greeting}</Text>;
+  return <Text style={styles.timeText}>{greeting}</Text>;
 }
 
 export default function Header() {
@@ -30,7 +32,7 @@ export default function Header() {
   const cardWidth = screenWidth * 0.28;
   const cardWidth2 = screenWidth * 0.3;
   const {colors} = useTheme()
-
+  
   return (
     <SafeAreaView style={{backgroundColor:colors.bg}}>
     <View style={{flexDirection:'row', alignItems:'center', justifyContent:'space-between',
